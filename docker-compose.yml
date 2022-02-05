@@ -1,0 +1,61 @@
+version: '3.9'
+
+services:
+  zookeeper:
+    container_name: ppob_zookeeper
+    image: debezium/zookeeper:${DEBEZIUM_VERSION}
+    restart: always
+    ports:
+      - "2181:2181"
+      - "2888:2888"
+      - "3888:3888"
+
+  kafka:
+    container_name: ppob_kafka
+    image: debezium/kafka:${DEBEZIUM_VERSION}
+    restart: always
+    ports:
+      - "9092:9092"
+    links:
+      - zookeeper
+    environment:
+      - ZOOKEEPER_CONNECT=zookeeper:2181
+
+  postgres_source:
+    container_name: ppob_postgres_source
+    build: ./postgresql
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=pgadmin
+
+  postgres_target:
+    container_name: ppob_postgres_target
+    build: ./postgresql
+    restart: always
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=pgadmin
+
+  connect:
+    container_name: ppob_connect
+    build:
+      context: ./debezium-connect
+      args:
+        - DEBEZIUM_VERSION=${DEBEZIUM_VERSION}
+    ports:
+      - "8083:8083"
+    links:
+      - kafka
+      - postgres_source
+      - postgres_target
+    environment:
+      - BOOTSTRAP_SERVERS=kafka:9092
+      - GROUP_ID=1
+      - CONFIG_STORAGE_TOPIC=my_connect_configs
+      - OFFSET_STORAGE_TOPIC=my_connect_offsets
+      - STATUS_STORAGE_TOPIC=my_connect_statuses
