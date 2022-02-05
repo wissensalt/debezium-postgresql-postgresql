@@ -4,6 +4,7 @@
     "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
     "tasks.max": "1",
     "plugin.name": "pgoutput",
+    
 
     "database.hostname": "postgres_source",
     "database.port": "5432",
@@ -19,10 +20,16 @@
     "database.history.kafka.bootstrap.servers": "kafka:9092",
     "database.history.kafka.topic": "public.history",
     
-    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
-    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter": "io.confluent.connect.avro.AvroConverter",
+    "value.converter": "io.confluent.connect.avro.AvroConverter",
+    "key.converter.schema.registry.url": "http://schema-registry:8081",
+    "value.converter.schema.registry.url": "http://schema-registry:8081",
     "key.converter.schemas.enable": "false",
     "value.converter.schemas.enable": "false",
-    "snapshot.mode": "always"    
+
+    "transforms": "AddPrefix",
+    "transforms.AddPrefix.type": "org.apache.kafka.connect.transforms.RegexRouter",
+    "transforms.AddPrefix.regex": "kf_ppob.public.(.*)",
+    "transforms.AddPrefix.replacement": "kf_ppob.public.phone_credits"
   }
 }

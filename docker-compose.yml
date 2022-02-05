@@ -21,10 +21,29 @@ services:
     environment:
       - ZOOKEEPER_CONNECT=zookeeper:2181
 
+  schema_registry:
+    image: confluentinc/cp-schema-registry
+    container_name: ppob_schema_registry
+    hostname: schema-registry
+    # restart: always
+    depends_on:
+      - zookeeper
+      - kafka
+    ports:
+      - 8181:8181
+      - 8081:8081
+    environment:
+      - SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL=zookeeper:2181
+      - SCHEMA_REGISTRY_HOST_NAME=schema-registry
+      - SCHEMA_REGISTRY_LISTENERS=http://schema-registry:8081
+      - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=//kafka:9092
+
   postgres_source:
     container_name: ppob_postgres_source
     build: ./postgresql
     restart: always
+    links:
+      - postgres_target
     ports:
       - "5432:5432"
     environment:
@@ -33,7 +52,7 @@ services:
 
   postgres_target:
     container_name: ppob_postgres_target
-    build: ./postgresql
+    build: ./postgresql-target
     restart: always
     ports:
       - "5433:5432"
@@ -50,12 +69,19 @@ services:
     ports:
       - "8083:8083"
     links:
-      - kafka
+      - kafka      
       - postgres_source
       - postgres_target
+      - schema_registry
     environment:
       - BOOTSTRAP_SERVERS=kafka:9092
       - GROUP_ID=1
       - CONFIG_STORAGE_TOPIC=my_connect_configs
       - OFFSET_STORAGE_TOPIC=my_connect_offsets
       - STATUS_STORAGE_TOPIC=my_connect_statuses
+      - KEY_CONVERTER=io.confluent.connect.avro.AvroConverter
+      - VALUE_CONVERTER=io.confluent.connect.avro.AvroConverter
+      - CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL=http://schema-registry:8081
+      - CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL=http://schema-registry:8081
+      - INTERNAL_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - INTERNAL_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
