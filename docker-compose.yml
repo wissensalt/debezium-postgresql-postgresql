@@ -25,7 +25,7 @@ services:
     image: confluentinc/cp-schema-registry
     container_name: ppob_schema_registry
     hostname: schema-registry
-    # restart: always
+    restart: always
     depends_on:
       - zookeeper
       - kafka

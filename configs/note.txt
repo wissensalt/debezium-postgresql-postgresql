@@ -151,6 +151,12 @@
     --bootstrap-server kafka:9092 \
     --from-beginning \
     --property print.key=true \
+    --topic cdc.kf_ppob.public.phone_credits
+
+    docker-compose exec kafka /kafka/bin/kafka-console-consumer.sh \
+    --bootstrap-server kafka:9092 \
+    --from-beginning \
+    --property print.key=true \
     --topic public.history
 
     docker-compose exec kafka /kafka/bin/kafka-console-consumer.sh \
@@ -164,12 +170,52 @@
     "transforms.route.regex": "([^.data]+)\\.([^.]+)\\.([^.]+)",
     "transforms.route.replacement": "$3"
 
+    "transforms": "AddPrefix",
+    "transforms.AddPrefix.type": "org.apache.kafka.connect.transforms.RegexRouter",
+    "transforms.AddPrefix.regex": "pg-dev.public.(.*)",
+    "transforms.AddPrefix.replacement": "data.cdc.dbname"
+
+    "topic.creation.enable": "true",
+    "topic.creation.default.replication.factor": 1,
+    "topic.creation.default.partitions": 3,
+    "topic.creation.default.cleanup.policy": "compact",
+    "topic.creation.default.delete.retention.ms": 7776000000,
+    "topic.creation.default.compression.type": "lz4",
+
+    "transforms": "outbox",
+    "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+    "key.converter": "io.confluent.connect.avro.AvroConverter",
+    "value.converter": "io.confluent.connect.avro.AvroConverter",
+    "value.converter.delegate.converter.type": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.delegate.converter.type.schemas.enable": "false",
+    "key.converter.schema.registry.url": "http://schema-registry:8081",
+    "value.converter.schema.registry.url": "http://schema-registry:8081"
+
     postgre-kf_ppob-source.public.kf_ppob
 
     docker-compose exec kafka /kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list
 
     curl -i -X DELETE localhost:8083/connectors/postgres-kf_ppob-source-connector
     curl -i -X DELETE localhost:8083/connectors/postgres-kf_ppob-sink-connector
+    curl -i http://localhost:8083/connectors/postgres-kf_ppob-source-connector/status
     
 
     docker-compose down && docker-compose up --build -d
+
+
+    docker run -it --rm --name avro-consumer --network=debezium-ppob_default \
+    --link ppob_zookeeper \
+    --link ppob_kafka \
+    --link ppob_postgres_source \
+    --link ppob_schema_registry \
+    debezium/connect:1.8.1.Final \
+    /kafka/bin/kafka-console-consumer.sh \
+      --bootstrap-server kafka:9092 \
+      --property print.key=true \
+      --formatter io.confluent.kafka.formatter.AvroMessageFormatter \
+      --property schema.registry.url=http://schema-registry:8081 \
+      --topic cdc.kf_ppob.public.phone_credits
+
+https://debezium.io/documentation/reference/0.10/configuration/avro.html
+
+      docker-compose exec connect /kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka:9092 --property print.key=true --formatter io.confluent.kafka.formatter.AvroMessageFormatter --property schema.registry.url=http://schema-registry:8081 --topic cdc.kf_ppob.public.phone_credits
