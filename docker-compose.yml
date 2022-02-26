@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   zookeeper:
-    container_name: ppob_zookeeper
+    container_name: cdc_zookeeper
     image: debezium/zookeeper:${DEBEZIUM_VERSION}
     restart: always
     ports:
@@ -11,7 +11,7 @@ services:
       - "3888:3888"
 
   kafka:
-    container_name: ppob_kafka
+    container_name: cdc_kafka
     image: debezium/kafka:${DEBEZIUM_VERSION}
     restart: always
     ports:
@@ -23,7 +23,7 @@ services:
 
   schema_registry:
     image: confluentinc/cp-schema-registry
-    container_name: ppob_schema_registry
+    container_name: cdc_schema_registry
     hostname: schema-registry
     restart: always
     depends_on:
@@ -39,8 +39,8 @@ services:
       - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=//kafka:9092
 
   postgres_source:
-    container_name: ppob_postgres_source
-    build: ./postgresql
+    container_name: cdc_postgres_source
+    build: ./postgresql-source
     restart: always
     links:
       - postgres_target
@@ -51,7 +51,7 @@ services:
       - POSTGRES_PASSWORD=pgadmin
 
   postgres_target:
-    container_name: ppob_postgres_target
+    container_name: cdc_postgres_target
     build: ./postgresql-target
     restart: always
     ports:
@@ -61,7 +61,7 @@ services:
       - POSTGRES_PASSWORD=pgadmin
 
   connect:
-    container_name: ppob_connect
+    container_name: cdc_connect
     build:
       context: ./debezium-connect
       args:
